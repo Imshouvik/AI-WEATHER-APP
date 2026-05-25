@@ -98,7 +98,8 @@
                     android:contentDescription="Refresh Widget"
                     android:padding="6dp"
                     android:background="@android:color/transparent"
-                    android:src="@drawable/ic_refresh" />
+                    android:src="@drawable/ic_refresh"
+                    android:visibility="gone" />
 
                 <ImageView
                     android:id="@+id/widget_settings_button"

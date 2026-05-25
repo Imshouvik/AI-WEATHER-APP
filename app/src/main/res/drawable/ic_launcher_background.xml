@@ -15,29 +15,18 @@
                 android:endY="108"
                 android:type="linear">
                 <item
-                    android:color="#0F172A"
+                    android:color="#0F0024"
                     android:offset="0.0" />
                 <item
-                    android:color="#1E293B"
+                    android:color="#16012F"
                     android:offset="1.0" />
             </gradient>
         </aapt:attr>
     </path>
-    <!-- Accent subtle radar sweep rings of the custom design -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#1E293B"
-        android:strokeWidth="0.8"
-        android:pathData="M 54,54 m -20,0 a 20,20 0 1,0 40,0 a 20,20 0 1,0 -40,0" />
+    <!-- Accent subtle brain network nodes -->
     <path
         android:fillColor="#00000000"
         android:strokeColor="#334155"
-        android:strokeWidth="0.8"
-        android:strokeLineJoin="round"
-        android:pathData="M 54,54 m -40,0 a 40,40 0 1,0 80,0 a 40,40 0 1,0 -80,0" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#1E293B"
-        android:strokeWidth="0.4"
-        android:pathData="M 54,54 m -30,0 a 30,30 0 1,0 60,0 a 30,30 0 1,0 -60,0" />
+        android:strokeWidth="0.5"
+        android:pathData="M20,20 L30,30 M80,20 L70,30 M20,80 L30,70 M80,80 L70,70" />
 </vector>

@@ -44,8 +44,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        if (intent != null && intent.getBooleanExtra("open_widget_studio", false)) {
-            showWidgetStudio.value = true
+        if (intent != null) {
+            if (intent.getBooleanExtra("open_widget_studio", false)) {
+                showWidgetStudio.value = true
+            }
+            if (intent.action == "com.example.action.SYNC_WEATHER") {
+                viewModel.refreshCurrentWeather()
+            }
         }
     }
 }

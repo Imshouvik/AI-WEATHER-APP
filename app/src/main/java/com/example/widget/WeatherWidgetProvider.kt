@@ -68,6 +68,14 @@ class WeatherWidgetProvider : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action == ACTION_REFRESH_WIDGET) {
+            // Trigger a real background sync instead of simulating data
+            val mainIntent = Intent(context, MainActivity::class.java).apply {
+                action = "com.example.action.SYNC_WEATHER"
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(mainIntent)
+
+            // Also update from current DB immediately
             ioScope.launch {
                 try {
                     val db = WeatherDatabase.getDatabase(context)
@@ -76,21 +84,11 @@ class WeatherWidgetProvider : AppWidgetProvider() {
 
                     if (list.isNotEmpty()) {
                         val primary = list.find { it.isPrimary } ?: list.first()
-                        // Simulate sensor refresh (bump temp slightly)
-                        val delta = (-1..1).random().toFloat()
-                        val nextTemp = (primary.temperatureC + delta).coerceIn(-5f, 42f)
-                        val updated = primary.copy(
-                            temperatureC = nextTemp,
-                            timestamp = System.currentTimeMillis()
-                        )
-                        dao.insertLocation(updated)
-
-                        // Notify widgets to refresh
                         val appWidgetManager = AppWidgetManager.getInstance(context)
                         val thisWidget = ComponentName(context, WeatherWidgetProvider::class.java)
                         val allIds = appWidgetManager.getAppWidgetIds(thisWidget)
                         for (id in allIds) {
-                            updateSingleAppWidget(context, appWidgetManager, id, updated)
+                            updateSingleAppWidget(context, appWidgetManager, id, primary)
                         }
                     }
                 } catch (e: Exception) {
@@ -120,7 +118,18 @@ class WeatherWidgetProvider : AppWidgetProvider() {
 
             // 2. Set label details
             views.setTextViewText(R.id.widget_city, location.cityName)
-            views.setTextViewText(R.id.widget_condition, location.condition.uppercase(Locale.getDefault()))
+            
+            // Fix night display: if it's clear/sunny and night time, show "CLEAR NIGHT"
+            val calendar = Calendar.getInstance()
+            val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
+            val isNight = currentHour >= 18 || currentHour < 6
+            val displayCondition = if (isNight && (location.condition.contains("Clear", true) || location.condition.contains("Sunny", true))) {
+                "CLEAR NIGHT"
+            } else {
+                location.condition.uppercase(Locale.getDefault())
+            }
+            
+            views.setTextViewText(R.id.widget_condition, displayCondition)
             views.setTextViewText(R.id.widget_temp, "${location.temperatureC.toInt()}°C")
             views.setTextViewText(
                 R.id.widget_high_low,
@@ -130,14 +139,17 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             val timestamp = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
             views.setTextViewText(R.id.widget_updated, "Sync: $timestamp")
 
-            // 3. Dynamic accent colors based on selected custom skins
-            val accentColor = when (selectedSkin) {
-                1 -> android.graphics.Color.parseColor("#FF9E00") // Compact Pill Orange
-                2 -> android.graphics.Color.parseColor("#00E5FF") // Pro Wide-Deck Electric Cyan
-                3 -> android.graphics.Color.parseColor("#E040FB") // Space Slate Cosmic Magenta
-                else -> android.graphics.Color.parseColor("#00FF66") // Calm Twilight Bright Green
+            // 3. Dynamic colors & background logic based on selected custom skins
+            // selectedSkin: 0 -> Calm Twilight, 1 -> Compact Pill, 2 -> Pro Wide-Deck, 3 -> Space Slate
+            val (accentColor, bgColor) = when (selectedSkin) {
+                1 -> Pair("#00FF66", "#141F30") // Compact Pill
+                2 -> Pair("#FFFF9E00", "#0F1218") // Pro Wide-Deck
+                3 -> Pair("#FFFFD54F", "#231A10") // Space Slate
+                else -> Pair("#00FF66", "#FFFFFF") // Calm Twilight (White glass)
             }
-            views.setTextColor(R.id.widget_condition, accentColor)
+            
+            views.setTextColor(R.id.widget_condition, android.graphics.Color.parseColor(accentColor))
+            views.setInt(R.id.widget_bg_view, "setColorFilter", android.graphics.Color.parseColor(bgColor))
 
             // 4. PendingIntent to open App on tapping widget body
             val activityIntent = Intent(context, MainActivity::class.java).apply {
@@ -149,6 +161,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                 activityIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
+            views.setOnClickPendingIntent(R.id.widget_root, activityPendingIntent)
             views.setOnClickPendingIntent(R.id.text_container, activityPendingIntent)
 
             // 5. PendingIntent on refresh icon button
@@ -161,6 +174,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                 refreshIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
+            views.setViewVisibility(R.id.widget_refresh_button, android.view.View.VISIBLE)
             views.setOnClickPendingIntent(R.id.widget_refresh_button, refreshPendingIntent)
 
             // 6. PendingIntent on settings gear button (Direct to Widget Overlay Studio inside Main app)

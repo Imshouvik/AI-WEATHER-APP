@@ -24,28 +24,29 @@
             android:theme="@style/Theme.MyApplication">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <!-- 1. Calm Twilight (Standard 3x2) -->
         <receiver
-            android:name="com.example.widget.WeatherWidgetProvider"
+            android:name="com.example.widget.WeatherWidgetProviderTwilight"
             android:exported="true"
-            android:label="Weather Satellite Radar Mini">
+            android:label="Weather Calm Twilight (3x2)">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.example.widget.REFRESH_WIDGET" />
+                <action android:name="com.example.widget.REFRESH_TWILIGHT_WIDGET" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/weather_widget_info" />
+                android:resource="@xml/weather_widget_info_twilight" />
         </receiver>
 
+        <!-- 2. Compact Pill (Horizontal 2x1) -->
         <receiver
             android:name="com.example.widget.WeatherWidgetProviderPill"
             android:exported="true"
-            android:label="Weather Glass Pill (Compact 2x1)">
+            android:label="Weather Glass Pill (2x1)">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.example.widget.REFRESH_PILL_WIDGET" />
@@ -55,17 +56,32 @@
                 android:resource="@xml/weather_widget_info_pill" />
         </receiver>
 
+        <!-- 3. Pro Wide-Deck (Dashboard 4x2) -->
         <receiver
-            android:name="com.example.widget.WeatherWidgetProviderPro"
+            android:name="com.example.widget.WeatherWidgetProviderProDeck"
             android:exported="true"
-            android:label="Weather Satellite Radar Pro Max (Dashboard 4x3)">
+            android:label="Weather Pro Wide-Deck (4x2)">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.example.widget.REFRESH_PRO_WIDGET" />
+                <action android:name="com.example.widget.REFRESH_PRO_DECK_WIDGET" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/weather_widget_info_pro" />
+                android:resource="@xml/weather_widget_info_pro_deck" />
+        </receiver>
+
+        <!-- 4. Space Slate (Vertical 2x2) -->
+        <receiver
+            android:name="com.example.widget.WeatherWidgetProviderSpace"
+            android:exported="true"
+            android:label="Weather Space Slate (2x2)">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.example.widget.REFRESH_SPACE_WIDGET" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weather_widget_info_space" />
         </receiver>
 
         <service

@@ -3,36 +3,22 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-
-    <!-- Sun disk peeking from behind -->
-    <path
-        android:fillColor="#FFB300"
-        android:pathData="M 64,42 A 16,16 0 1 1 64,41.9 Z" />
-
-    <!-- Sun glow / corona rays -->
-    <path
-        android:strokeColor="#FFE082"
-        android:strokeWidth="2.5"
-        android:strokeLineCap="round"
-        android:pathData="M64,20 L64,24 M81,25 L78,28 M88,42 L84,42 M81,59 L78,56 M47,25 L50,28" />
-
-    <!-- Premium Rounded Cloud Body -->
-    <path
-        android:fillColor="#E2E8F0"
-        android:pathData="M38,72 C33.5,72 30,68.5 30,64 C30,59.8 33.1,56.4 37.2,56 C38.5,49.2 44.5,44 51.5,44 C56.6,44 61.1,47.1 63,51.5 C64.6,50.6 66.5,50 68.5,50 C74.3,50 79,54.7 79,60.5 C79,61 78.9,61.6 78.8,62.1 C81.8,63.1 84,65.8 84,69 C84,73.4 80.4,77 76,77 L38,77 Z" />
-
-    <!-- Glowing highlight on the top ridge of the cloud -->
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:pathData="M37.2,56 C38.5,49.2 44.5,44 51.5,44 C56.6,44 61.1,47.1 63,51.5" />
-
-    <!-- Style element representing falling soft rain/glow particles at the bottom -->
-    <path
-        android:strokeColor="#60A5FA"
-        android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:pathData="M44,82 L42,86 M54,84 L52,88 M64,82 L62,86" />
-
+    <group
+        android:translateX="4"
+        android:translateY="4">
+        <!-- Cloud Brain Base (scaled for launcher) -->
+        <path
+            android:fillColor="#E8D1FF"
+            android:pathData="M30,50 C30,40 40,35 50,35 C60,35 70,40 70,50 C70,60 60,65 50,65 C40,65 30,60 30,50 Z" />
+        <path
+            android:fillColor="#D1B0FF"
+            android:pathData="M45,35 C40,30 30,30 25,40 C20,50 25,60 35,60" />
+        <path
+            android:fillColor="#D1B0FF"
+            android:pathData="M55,35 C60,30 70,30 75,40 C80,50 75,60 65,60" />
+        <!-- Lightning Bolt -->
+        <path
+            android:fillColor="#00FFCC"
+            android:pathData="M50,60 L40,75 L50,75 L45,90 L60,70 L50,70 L55,60 Z" />
+    </group>
 </vector>

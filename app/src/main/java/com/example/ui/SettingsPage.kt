@@ -12,6 +12,9 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.example.R
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -93,6 +96,12 @@ fun SettingsPage(
                     )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
+                Image(
+                    painter = painterResource(id = R.drawable.ic_app_logo),
+                    contentDescription = "App Logo",
+                    modifier = Modifier.size(36.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
                         text = "PREMIUM SETTINGS",
@@ -122,7 +131,7 @@ fun SettingsPage(
             ) {
 
                 // SECTION 1: Temperature Unit Selector
-                SettingsSectionHeader(title = "UNIT PREFERENCES", icon = Icons.Filled.Thermostat)
+                SettingsSectionHeader(title = getTranslatedLabel("UNIT PREFERENCES", selectedLanguage), icon = Icons.Filled.Thermostat)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -139,7 +148,7 @@ fun SettingsPage(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Celsius (°C)",
+                            text = if (selectedLanguage.contains("हिंदी") || selectedLanguage.contains("Hindi")) "सेल्सियस (°C)" else if (selectedLanguage.contains("বাংলা") || selectedLanguage.contains("Bengali")) "সেলসিয়াস (°C)" else "Celsius (°C)",
                             fontWeight = FontWeight.Bold,
                             color = if (isCelsius) Color.Black else Color.White,
                             fontSize = 14.sp
@@ -155,7 +164,7 @@ fun SettingsPage(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Fahrenheit (°F)",
+                            text = if (selectedLanguage.contains("हिंदी") || selectedLanguage.contains("Hindi")) "फ़ारेनहाइट (°F)" else if (selectedLanguage.contains("বাংলা") || selectedLanguage.contains("Bengali")) "ফারেনহাইট (°F)" else "Fahrenheit (°F)",
                             fontWeight = FontWeight.Bold,
                             color = if (!isCelsius) Color.Black else Color.White,
                             fontSize = 14.sp
@@ -164,7 +173,7 @@ fun SettingsPage(
                 }
 
                 // SECTION 2: Transparency & Glassmorphism Studio
-                SettingsSectionHeader(title = "DASHBOARD TRANSPARENCY PRESET", icon = Icons.Filled.BlurOn)
+                SettingsSectionHeader(title = getTranslatedLabel("DASHBOARD TRANSPARENCY PRESET", selectedLanguage), icon = Icons.Filled.BlurOn)
                 Text(
                     text = "Controls card opacity levels across all screens, allowing the beautiful animated weather backgrounds to flow behind elements.",
                     style = MaterialTheme.typography.bodySmall,
@@ -241,7 +250,7 @@ fun SettingsPage(
                 }
 
                 // SECTION 3: APP CUSTOM THEMES
-                SettingsSectionHeader(title = "EXCLUSIVE THEME STYLES", icon = Icons.Filled.Palette)
+                SettingsSectionHeader(title = getTranslatedLabel("EXCLUSIVE THEME STYLES", selectedLanguage), icon = Icons.Filled.Palette)
                 val themes = listOf(
                     Triple("Slate Dark", Color(0xFF1F2429), "Premium Charcoal Slate & Gold accents"),
                     Triple("Deep Cosmic", Color(0xFF1D093F), "Cosmic Violet & Nebula Pink tints"),
@@ -366,7 +375,7 @@ fun SettingsPage(
                 }
 
                 // SECTION 5: Localization / Language
-                SettingsSectionHeader(title = "INTERNATIONALIZATION", icon = Icons.Filled.Language)
+                SettingsSectionHeader(title = getTranslatedLabel("INTERNATIONALIZATION", selectedLanguage), icon = Icons.Filled.Language)
                 val languages = listOf("English (US)", "हिंदी (Hindi)", "বাংলা (Bengali)")
                 var showLangDropdown by remember { mutableStateOf(false) }
 
@@ -426,7 +435,7 @@ fun SettingsPage(
                 }
 
                 // SECTION 6: Broadcast Settings / Notifications
-                SettingsSectionHeader(title = "REALTIME ALERTS & NOTIFICATIONS", icon = Icons.Filled.NotificationsActive)
+                SettingsSectionHeader(title = getTranslatedLabel("REALTIME ALERTS & NOTIFICATIONS", selectedLanguage), icon = Icons.Filled.NotificationsActive)
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -458,7 +467,7 @@ fun SettingsPage(
                 }
 
                 // SECTION 7: Advanced Tools & Sync
-                SettingsSectionHeader(title = "ADVANCED SYNCHRONIZATION", icon = Icons.Filled.Sync)
+                SettingsSectionHeader(title = getTranslatedLabel("ADVANCED SYNCHRONIZATION", selectedLanguage), icon = Icons.Filled.Sync)
                 
                 // Interval Row
                 var showIntervalDropdown by remember { mutableStateOf(false) }
@@ -550,7 +559,7 @@ fun SettingsPage(
                 }
 
                 // SECTION 8: FAQ & Customer Support
-                SettingsSectionHeader(title = "SUPPORT & ASSISTANCE", icon = Icons.Filled.HelpCenter)
+                SettingsSectionHeader(title = getTranslatedLabel("SUPPORT & ASSISTANCE", selectedLanguage), icon = Icons.Filled.HelpCenter)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -603,11 +612,10 @@ fun SettingsPage(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Cloud,
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_app_logo),
                             contentDescription = null,
-                            tint = Color(0xFF7491FF),
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                         Text(
                             text = "Developed by Shouvik Maitra",
@@ -704,9 +712,20 @@ fun SettingsPage(
                 Button(
                     onClick = {
                         if (feedbackText.trim().isNotEmpty()) {
-                            Toast.makeText(context, "Feedback sent! Thank you for supporting AI Weather Radar", Toast.LENGTH_LONG).show()
-                            feedbackText = ""
-                            showFeedbackDialog = false
+                            // Intent to send email
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
+                                data = android.net.Uri.parse("mailto:") 
+                                putExtra(android.content.Intent.EXTRA_EMAIL, arrayOf("maitrashouvik@gmail.com")) // REPLACE WITH YOUR EMAIL
+                                putExtra(android.content.Intent.EXTRA_SUBJECT, "AI Weather App Feedback")
+                                putExtra(android.content.Intent.EXTRA_TEXT, feedbackText)
+                            }
+                            try {
+                                context.startActivity(android.content.Intent.createChooser(intent, "Send feedback via..."))
+                                feedbackText = ""
+                                showFeedbackDialog = false
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "No email app found to send feedback.", Toast.LENGTH_LONG).show()
+                            }
                         } else {
                             Toast.makeText(context, "Body cannot be empty!", Toast.LENGTH_SHORT).show()
                         }

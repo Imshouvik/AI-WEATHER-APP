@@ -132,28 +132,38 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     private val _autoRefreshInterval = MutableStateFlow("30 min")
     val autoRefreshInterval = _autoRefreshInterval.asStateFlow()
 
+    private val prefs = application.getSharedPreferences("weather_prefs_v3", android.content.Context.MODE_PRIVATE)
+
     fun setTransparencyLevel(level: String) {
         _transparencyLevel.value = level
+        prefs.edit().putString("setting_transparency_level", level).apply()
     }
 
     fun setThemeMode(theme: String) {
         _themeMode.value = theme
+        prefs.edit().putString("setting_theme_mode", theme).apply()
     }
 
     fun setWidgetDensity(density: String) {
         _widgetDensity.value = density
+        prefs.edit().putString("setting_widget_density", density).apply()
     }
 
     fun setSelectedLanguage(lang: String) {
         _selectedLanguage.value = lang
+        prefs.edit().putString("setting_selected_language", lang).apply()
+        // Re-trigger AI briefing when language changes
+        _selectedLocation.value?.let { triggerAiBriefing(it) }
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {
         _notificationsEnabled.value = enabled
+        prefs.edit().putBoolean("setting_notifications_enabled", enabled).apply()
     }
 
     fun setAutoRefreshInterval(interval: String) {
         _autoRefreshInterval.value = interval
+        prefs.edit().putString("setting_auto_refresh_interval", interval).apply()
     }
 
     // List of saved locations
@@ -188,9 +198,16 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         Pair("Rio de Janeiro", "Brazil")
     )
 
-    private val prefs = application.getSharedPreferences("weather_prefs_v3", android.content.Context.MODE_PRIVATE)
-
     init {
+        // Load persisted settings
+        _isCelsius.value = prefs.getBoolean("setting_is_celsius", true)
+        _transparencyLevel.value = prefs.getString("setting_transparency_level", "Medium") ?: "Medium"
+        _themeMode.value = prefs.getString("setting_theme_mode", "Slate Dark") ?: "Slate Dark"
+        _widgetDensity.value = prefs.getString("setting_widget_density", "Standard Density") ?: "Standard Density"
+        _selectedLanguage.value = prefs.getString("setting_selected_language", "English (US)") ?: "English (US)"
+        _notificationsEnabled.value = prefs.getBoolean("setting_notifications_enabled", true)
+        _autoRefreshInterval.value = prefs.getString("setting_auto_refresh_interval", "30 min") ?: "30 min"
+
         // Step 1: Always reactively monitor saved locations to set initial selection on app start/reload
         viewModelScope.launch {
             savedLocations.collect { list ->
@@ -387,7 +404,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                         val rainChance = forecast.hourly?.precipitationProbability?.getOrNull(currentHour) ?: 0
                         val rawWord = OpenMeteoClient.mapWeatherCode(cur.weatherCode)
                         val conditionWord = adjustConditionToInstantScenario(rawWord, newTemp, cur.precipitation, rainChance)
-                        val mainUv = forecast.daily?.uvIndexMax?.firstOrNull()?.toInt() ?: 4
+                        val mainUv = forecast.daily?.uvIndexMax?.firstOrNull()?.toInt() ?: 0
                         val realAqi = calculateRealAqi(conditionWord, newTemp, cur.windKmh)
 
                         val updated = location.copy(
@@ -428,10 +445,12 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
 
     fun toggleTempUnit() {
         val current = _isCelsius.value
-        _isCelsius.value = !current
+        val newValue = !current
+        _isCelsius.value = newValue
+        prefs.edit().putBoolean("setting_is_celsius", newValue).apply()
         val active = _selectedLocation.value
         if (active != null) {
-            generateFullWeatherDetails(active, !current)
+            generateFullWeatherDetails(active, newValue)
         }
     }
 
@@ -784,23 +803,28 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         }
 
         val uvDesc = when (loc.uvIndex) {
-            in 0..2 -> "LOW (No risk, SPF 15 recommends)"
+            in 0..2 -> "LOW (No risk, SPF 15 recommended)"
             in 3..5 -> "MODERATE (Apply sunscreen, seek shade at noon)"
             in 6..7 -> "HIGH (Wear a wide hat and polarized shades)"
             in 8..10 -> "VERY HIGH (Minimize skin exposure completely)"
             else -> "EXTREME WARNING (Severe damage risk under 15 minutes)"
         }
 
+        // Adjust UV description for night time
+        val finalUvDesc = if (currentHour !in 6..18) "LOW (Night time)" else uvDesc
+        val finalUvIndex = if (currentHour !in 6..18) 0 else loc.uvIndex
+        val finalLoc = loc.copy(uvIndex = finalUvIndex)
+
         val timestamp = java.text.SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
 
         _forecastDetails.value = FullWeatherDetails(
-            location = loc,
+            location = finalLoc,
             isCelsius = isC,
             hourlyList = hList,
             dailyList = dList,
             aqiStatus = aqiSt,
             aqiMessage = aqiMsg,
-            uvDescription = uvDesc,
+            uvDescription = finalUvDesc,
             lastUpdated = timestamp
         )
     }

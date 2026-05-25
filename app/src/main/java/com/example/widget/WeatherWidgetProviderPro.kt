@@ -66,6 +66,13 @@ class WeatherWidgetProviderPro : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action == ACTION_REFRESH_PRO_WIDGET) {
+            // Trigger a real background sync
+            val mainIntent = Intent(context, MainActivity::class.java).apply {
+                action = "com.example.action.SYNC_WEATHER"
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(mainIntent)
+
             ioScope.launch {
                 try {
                     val db = WeatherDatabase.getDatabase(context)
@@ -74,19 +81,11 @@ class WeatherWidgetProviderPro : AppWidgetProvider() {
 
                     if (list.isNotEmpty()) {
                         val primary = list.find { it.isPrimary } ?: list.first()
-                        val delta = (-1..1).random().toFloat()
-                        val nextTemp = (primary.temperatureC + delta).coerceIn(-5f, 42f)
-                        val updated = primary.copy(
-                            temperatureC = nextTemp,
-                            timestamp = System.currentTimeMillis()
-                        )
-                        dao.insertLocation(updated)
-
                         val appWidgetManager = AppWidgetManager.getInstance(context)
                         val thisWidget = ComponentName(context, WeatherWidgetProviderPro::class.java)
                         val allIds = appWidgetManager.getAppWidgetIds(thisWidget)
                         for (id in allIds) {
-                            updateSingleAppWidget(context, appWidgetManager, id, updated)
+                            updateSingleAppWidget(context, appWidgetManager, id, primary)
                         }
                     }
                 } catch (e: Exception) {
@@ -113,7 +112,18 @@ class WeatherWidgetProviderPro : AppWidgetProvider() {
             views.setInt(R.id.widget_bg_view, "setImageAlpha", alphaInt)
 
             views.setTextViewText(R.id.widget_city, location.cityName)
-            views.setTextViewText(R.id.widget_condition, location.condition.uppercase(Locale.getDefault()))
+            
+            // Fix night display
+            val calendar = Calendar.getInstance()
+            val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
+            val isNight = currentHour >= 18 || currentHour < 6
+            val displayCondition = if (isNight && (location.condition.contains("Clear", true) || location.condition.contains("Sunny", true))) {
+                "CLEAR NIGHT"
+            } else {
+                location.condition.uppercase(Locale.getDefault())
+            }
+            
+            views.setTextViewText(R.id.widget_condition, displayCondition)
             views.setTextViewText(R.id.widget_temp, "${location.temperatureC.toInt()}°C")
             
             views.setTextViewText(R.id.widget_wind, "${location.windKmh.toInt()} km/h")
@@ -128,13 +138,15 @@ class WeatherWidgetProviderPro : AppWidgetProvider() {
             val timestamp = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
             views.setTextViewText(R.id.widget_updated, "Sync: $timestamp")
 
-            val accentColor = when (selectedSkin) {
-                1 -> android.graphics.Color.parseColor("#FF9E00")
-                2 -> android.graphics.Color.parseColor("#00E5FF")
-                3 -> android.graphics.Color.parseColor("#E040FB")
-                else -> android.graphics.Color.parseColor("#00FF66")
+            val (accentColor, bgColor) = when (selectedSkin) {
+                1 -> Pair("#00FF66", "#141F30") // Compact Pill
+                2 -> Pair("#FFFF9E00", "#0F1218") // Pro Wide-Deck
+                3 -> Pair("#FFFFD54F", "#231A10") // Space Slate
+                else -> Pair("#00FF66", "#FFFFFF") // Calm Twilight
             }
-            views.setTextColor(R.id.widget_condition, accentColor)
+            
+            views.setTextColor(R.id.widget_condition, android.graphics.Color.parseColor(accentColor))
+            views.setInt(R.id.widget_bg_view, "setColorFilter", android.graphics.Color.parseColor(bgColor))
 
             val activityIntent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -156,7 +168,9 @@ class WeatherWidgetProviderPro : AppWidgetProvider() {
                 refreshIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
+            views.setViewVisibility(R.id.widget_refresh_button, android.view.View.VISIBLE)
             views.setOnClickPendingIntent(R.id.widget_refresh_button, refreshPendingIntent)
+            views.setOnClickPendingIntent(R.id.widget_root, activityPendingIntent)
 
             val settingsIntent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP

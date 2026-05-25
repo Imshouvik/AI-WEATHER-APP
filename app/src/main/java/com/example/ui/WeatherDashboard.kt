@@ -432,6 +432,7 @@ fun WeatherDashboardScreen(
                         PrimaryWeatherBanner(
                             location = selectedLoc,
                             isCelsius = isCelsius,
+                            selectedLanguage = selectedLanguage,
                             containerColor = themeCardBg,
                             borderColor = themeBorder
                         )
@@ -443,6 +444,7 @@ fun WeatherDashboardScreen(
                             briefingText = aiBriefing,
                             isLoading = isAiLoading,
                             onAiClick = { selectedLoc?.let { viewModel.selectLocation(it) } },
+                            selectedLanguage = selectedLanguage,
                             containerColor = themeCardBg,
                             borderColor = themeBorder
                         )
@@ -503,6 +505,7 @@ fun WeatherDashboardScreen(
                             WeeklyForecastContainer(
                                 details = details,
                                 isCelsius = isCelsius,
+                                selectedLanguage = selectedLanguage,
                                 containerColor = themeCardBg,
                                 borderColor = themeBorder
                             )
@@ -540,6 +543,7 @@ fun WeatherDashboardScreen(
             CitySelectionOverlay(
                 savedLocations = savedLocations,
                 activeCity = selectedLoc,
+                selectedLanguage = selectedLanguage,
                 onClose = { showCitySearch = false },
                 onSelect = {
                     viewModel.selectLocation(it)
@@ -970,6 +974,7 @@ fun WeatherAtmosphereAnimationLayer(condition: String) {
 fun PrimaryWeatherBanner(
     location: SavedLocation?,
     isCelsius: Boolean,
+    selectedLanguage: String,
     containerColor: Color = Color(0xFF1F2429),
     borderColor: Color = Color(0xFF2D3135)
 ) {
@@ -1052,7 +1057,7 @@ fun PrimaryWeatherBanner(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = displayCondition.uppercase(Locale.getDefault()),
+                    text = getTranslatedLabel(displayCondition, selectedLanguage).uppercase(Locale.getDefault()),
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 2.sp,
@@ -1082,7 +1087,7 @@ fun PrimaryWeatherBanner(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
-                    text = "FEELS LIKE: $feelsLikeText",
+                    text = "${getTranslatedLabel("Feels Like", selectedLanguage)}: $feelsLikeText",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp),
                     color = Color(0xFF00FF66)
                 )
@@ -1097,6 +1102,7 @@ fun AiBriefingCard(
     briefingText: String,
     isLoading: Boolean,
     onAiClick: () -> Unit,
+    selectedLanguage: String,
     containerColor: Color = Color(0xFF161B1F),
     borderColor: Color = Color(0xFF2D3135)
 ) {
@@ -1127,7 +1133,7 @@ fun AiBriefingCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "GEMINI METEOROLOGICAL BRIEFING",
+                        text = getTranslatedLabel("AI Weather Briefing", selectedLanguage),
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
@@ -1529,6 +1535,7 @@ fun WeatherMetricsGrid(
                 WindVectorCard(
                     windSpeed = loc.windKmh,
                     directionDeg = loc.windDirDegrees,
+                    selectedLanguage = selectedLanguage,
                     containerColor = containerColor,
                     borderColor = borderColor
                 )
@@ -1538,6 +1545,7 @@ fun WeatherMetricsGrid(
                     pressure = loc.pressureHpa,
                     aqi = loc.aqi,
                     aqiStatus = details.aqiStatus,
+                    selectedLanguage = selectedLanguage,
                     containerColor = containerColor,
                     borderColor = borderColor
                 )
@@ -1674,6 +1682,7 @@ fun MetricScaleGaugeCard(
 fun WindVectorCard(
     windSpeed: Float,
     directionDeg: Int,
+    selectedLanguage: String,
     containerColor: Color = Color(0xFF161B1F),
     borderColor: Color = Color(0xFF2D3135)
 ) {
@@ -1688,7 +1697,7 @@ fun WindVectorCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "WIND SPEED", fontSize = 10.sp, color = Color(0xFF8C9199), fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text(text = getTranslatedLabel("Wind Speed", selectedLanguage).uppercase(), fontSize = 10.sp, color = Color(0xFF8C9199), fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Icon(imageVector = Icons.Outlined.Air, contentDescription = null, tint = Color(0xFF7491FF), modifier = Modifier.size(16.dp))
             }
 
@@ -1741,6 +1750,7 @@ fun AtmosphericPressureCard(
     pressure: Int,
     aqi: Int,
     aqiStatus: String,
+    selectedLanguage: String,
     containerColor: Color = Color(0xFF161B1F),
     borderColor: Color = Color(0xFF2D3135)
 ) {
@@ -1755,7 +1765,7 @@ fun AtmosphericPressureCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "BAROMETRY", fontSize = 10.sp, color = Color(0xFF8C9199), fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text(text = getTranslatedLabel("Air Quality", selectedLanguage).uppercase(), fontSize = 10.sp, color = Color(0xFF8C9199), fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Icon(imageVector = Icons.Outlined.FilterHdr, contentDescription = null, tint = Color(0xFF7491FF), modifier = Modifier.size(16.dp))
             }
 
@@ -1800,6 +1810,7 @@ fun AtmosphericPressureCard(
 fun WeeklyForecastContainer(
     details: FullWeatherDetails,
     isCelsius: Boolean,
+    selectedLanguage: String,
     containerColor: Color = Color(0xFF1F2429),
     borderColor: Color = Color(0xFF2D3135)
 ) {
@@ -1813,7 +1824,7 @@ fun WeeklyForecastContainer(
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
-                text = "7-DAY SATELLITE FORECAST",
+                text = getTranslatedLabel("Weekly Forecast", selectedLanguage).uppercase(),
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp),
                 color = Color(0xFF7491FF),
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -1933,6 +1944,7 @@ fun DailyForecastRow(forecast: DailyForecast, isCelsius: Boolean) {
 fun CitySelectionOverlay(
     savedLocations: List<SavedLocation>,
     activeCity: SavedLocation?,
+    selectedLanguage: String,
     onClose: () -> Unit,
     onSelect: (SavedLocation) -> Unit,
     onDelete: (SavedLocation) -> Unit,
@@ -1970,7 +1982,7 @@ fun CitySelectionOverlay(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "METEOR REGIONAL SELECTOR",
+                        text = getTranslatedLabel("Saved Locations", selectedLanguage).uppercase(),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
                         color = Color(0xFF7491FF)
                     )
@@ -1992,7 +2004,7 @@ fun CitySelectionOverlay(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("city_search_input"),
-                    placeholder = { Text(text = "Search global sectors (e.g. Tokyo)...", color = Color(0xFF8C9199)) },
+                    placeholder = { Text(text = getTranslatedLabel("Search City, Country...", selectedLanguage), color = Color(0xFF8C9199)) },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color(0xFFE2E2E6),
                         unfocusedTextColor = Color(0xFFE2E2E6),
@@ -4126,136 +4138,106 @@ fun LauncherWidgetPromoCard(
 fun getTranslatedLabel(label: String, language: String): String {
     val isHindi = language.contains("हिंदी") || language.contains("Hindi")
     val isBengali = language.contains("বাংলা") || language.contains("Bengali")
-    return when (label) {
-        "Atmospheric Details" -> when {
+    return when {
+        label.contains("Atmospheric Details", ignoreCase = true) -> when {
             isHindi -> "वायुमंडलीय विवरण"
             isBengali -> "বায়ুমণ্ডলীয় বিবরণ"
             else -> "Atmospheric Details"
         }
-        "Weekly Forecast" -> when {
+        label.contains("Weekly Forecast", ignoreCase = true) -> when {
             isHindi -> "साप्ताहिक पूर्वानुमान"
             isBengali -> "সাপ্তাহিক পূর্বাভাস"
             else -> "Weekly Forecast"
         }
-        "Rain Chance" -> when {
+        label.contains("Rain Chance", ignoreCase = true) -> when {
             isHindi -> "बारिश की संभावना"
             isBengali -> "বৃষ্টির সম্ভাবনা"
             else -> "Rain Chance"
         }
-        "Humidity" -> when {
+        label.contains("Humidity", ignoreCase = true) -> when {
             isHindi -> "आर्द्रता"
             isBengali -> "আর্দ্রতা"
             else -> "Humidity"
         }
-        "Wind Speed" -> when {
+        label.contains("Wind Speed", ignoreCase = true) -> when {
             isHindi -> "हवा की गति"
             isBengali -> "বাতাসের গতিবেগ"
             else -> "Wind Speed"
         }
-        "UV Index" -> when {
-            isHindi -> "यूवी इंडेक्स"
+        label.contains("UV Index", ignoreCase = true) -> when {
+            isHindi -> "ইউভি সূচক"
             isBengali -> "ইউভি সূচক"
             else -> "UV Index"
         }
-        "Air Quality" -> when {
+        label.contains("Air Quality", ignoreCase = true) -> when {
             isHindi -> "वायु गुणवत्ता"
             isBengali -> "বায়ুর গুণমান"
             else -> "Air Quality"
         }
-        "Feels Like" -> when {
+        label.contains("Feels Like", ignoreCase = true) -> when {
             isHindi -> "ऐसा महसूस होता है"
             isBengali -> "অনুভূত তাপমাত্রা"
             else -> "Feels Like"
         }
-        "Highest" -> when {
+        label.contains("Highest", ignoreCase = true) -> when {
             isHindi -> "अधिकतम"
             isBengali -> "সর্বোচ্চ"
             else -> "Highest"
         }
-        "Lowest" -> when {
+        label.contains("Lowest", ignoreCase = true) -> when {
             isHindi -> "न्यूनतम"
             isBengali -> "সর্বনিম্ন"
             else -> "Lowest"
         }
-        "Saved Locations" -> when {
+        label.contains("Saved Locations", ignoreCase = true) -> when {
             isHindi -> "सहेजे गए स्थान"
-            isBengali -> "সংরक्षित স্থানসমূহ"
+            isBengali -> "সংরক্ষিত স্থানসমূহ"
             else -> "Saved Locations"
         }
-        "Local Alert Center" -> when {
+        label.contains("Local Alert Center", ignoreCase = true) -> when {
             isHindi -> "स्थानीय अलर्ट केंद्र"
             isBengali -> "স্থানীয় সতর্কতা কেন্দ্র"
             else -> "Local Alert Center"
         }
-        "Active Alerts" -> when {
+        label.contains("Active Alerts", ignoreCase = true) -> when {
             isHindi -> "सक्रिय अलर्ट"
             isBengali -> "সক্রিয় সতর্কতা"
             else -> "Active Alerts"
         }
-        "No active weather warnings. All clear." -> when {
+        label.contains("No active weather warnings", ignoreCase = true) -> when {
             isHindi -> "कोई सक्रिय मौसम चेतावनी नहीं। सब सामान्य।"
             isBengali -> "কোনো সক্রিয় আবহাওয়া সতর্কতা নেই। সব ঠিক আছে।"
             else -> "No active weather warnings. All clear."
         }
-        "Add Alert Trigger" -> when {
-            isHindi -> "अलर्ट ट्रिगर जोड़ें"
-            isBengali -> "সতর্কতা যোগ করুন"
-            else -> "Add Alert Trigger"
-        }
-        "Search City, Country..." -> when {
+        label.contains("Search City, Country", ignoreCase = true) -> when {
             isHindi -> "शहर, देश खोजें..."
             isBengali -> "শহর, দেশ অনুসন্ধান করুন..."
             else -> "Search City, Country..."
         }
-        "Select Weather Aspect" -> when {
-            isHindi -> "मौसम पहलू का चयन करें"
-            isBengali -> "আবহাওয়ার দিক চয়ন করুন"
-            else -> "Select Weather Aspect"
-        }
-        "Threshold Value" -> when {
-            isHindi -> "सीमा मान"
-            isBengali -> "সীমা মান"
-            else -> "Threshold Value"
-        }
-        "Cancel" -> when {
-            isHindi -> "रद्द करें"
-            isBengali -> "বাতিল করুন"
-            else -> "Cancel"
-        }
-        "Add" -> when {
-            isHindi -> "जोड़ें"
-            isBengali -> "যোগ করুন"
-            else -> "Add"
-        }
-        "AI Weather Briefing" -> when {
+        label.contains("AI Weather Briefing", ignoreCase = true) -> when {
             isHindi -> "एआई मौसम ब्रीफिंग"
             isBengali -> "এআই আবহাওয়া ব্রিফিং"
             else -> "AI Weather Briefing"
         }
-        "Weekly weather overview and expectations" -> when {
-            isHindi -> "साप्ताहिक मौसम अवलोकन और अपेक्षाएं"
-            isBengali -> "সাপ্তাহিক আবহাওয়া ওভারভিউ এবং প্রত্যাশা"
-            else -> "Weekly weather overview and expectations"
+        label.contains("Clear Sunny", ignoreCase = true) || label.contains("Clear", ignoreCase = true) -> when {
+            isHindi -> "साफ मौसम"
+            isBengali -> "পরিষ্কার আকাশ"
+            else -> label
         }
-        "Historical Trends" -> when {
-            isHindi -> "ऐतिहासिक रुझान"
-            isBengali -> "ঐতিহাসিক প্রবণতা"
-            else -> "Historical Trends"
+        label.contains("Cloudy", ignoreCase = true) || label.contains("Overcast", ignoreCase = true) -> when {
+            isHindi -> "बादल छाए रहेंगे"
+            isBengali -> "মেঘলা আকাশ"
+            else -> label
         }
-        "Compare dynamic logs" -> when {
-            isHindi -> "गतिशील लॉग की तुलना करें"
-            isBengali -> "ডায়নামিক লগ তুলনা করুন"
-            else -> "Compare dynamic logs"
+        label.contains("Rain", ignoreCase = true) || label.contains("Shower", ignoreCase = true) -> when {
+            isHindi -> "बारिश"
+            isBengali -> "বৃষ্টি"
+            else -> label
         }
-        "Radar View Layer" -> when {
-            isHindi -> "रडार दृश्य परत"
-            isBengali -> "রাডার ভিউ লেয়ার"
-            else -> "Radar View Layer"
-        }
-        "24-Hour Radar Timeline" -> when {
-            isHindi -> "24-घंटे रडार समयरेखा"
-            isBengali -> "২৪ ঘণ্টার রাডার টাইমলাইন"
-            else -> "24-Hour Radar Timeline"
+        label.contains("Storm", ignoreCase = true) -> when {
+            isHindi -> "तूफान"
+            isBengali -> "ঝড়"
+            else -> label
         }
         else -> label
     }

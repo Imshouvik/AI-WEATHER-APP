@@ -77,7 +77,8 @@
                 android:contentDescription="Refresh"
                 android:padding="5dp"
                 android:background="@android:color/transparent"
-                android:src="@drawable/ic_refresh" />
+                android:src="@drawable/ic_refresh"
+                android:visibility="gone" />
         </LinearLayout>
 
     </LinearLayout>
