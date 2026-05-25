@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "711793338170",
+    "project_id": "ai-weather-radar",
+    "storage_bucket": "ai-weather-radar.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:711793338170:android:70747e4f9f3ef30fed1203",
+        "android_client_info": {
+          "package_name": "aiweather.svklabs"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASMd-oqBQD6PzL_-KpdgowCNImNv2sdI0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

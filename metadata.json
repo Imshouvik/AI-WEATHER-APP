@@ -1,0 +1,6 @@
+{
+  "name": "AI Weather Radar",
+  "description": "A premium modern weather application featuring real-time radar overlays and adaptive home screen widgets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
