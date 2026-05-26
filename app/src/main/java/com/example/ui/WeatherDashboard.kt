@@ -47,6 +47,22 @@ import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.sin
 
+fun checkLocationPrompt(context: android.content.Context, prefs: android.content.SharedPreferences, onShow: () -> Unit) {
+    val hasCoarse = androidx.core.content.ContextCompat.checkSelfPermission(
+        context,
+        android.Manifest.permission.ACCESS_COARSE_LOCATION
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    val hasFine = androidx.core.content.ContextCompat.checkSelfPermission(
+        context,
+        android.Manifest.permission.ACCESS_FINE_LOCATION
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    val hasPromptedLoc = prefs.getBoolean("has_prompted_location_v4", false)
+    
+    if (!hasCoarse && !hasFine && !hasPromptedLoc) {
+        onShow()
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WeatherDashboardScreen(
@@ -87,6 +103,7 @@ fun WeatherDashboardScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var showNotificationExplanationDialog by remember { mutableStateOf(false) }
+    var showLocationExplanationDialog by remember { mutableStateOf(false) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -112,6 +129,8 @@ fun WeatherDashboardScreen(
     }
 
     LaunchedEffect(Unit) {
+        val prefs = context.getSharedPreferences("weather_prefs_v3", android.content.Context.MODE_PRIVATE)
+        
         val hasCoarse = androidx.core.content.ContextCompat.checkSelfPermission(
             context,
             android.Manifest.permission.ACCESS_COARSE_LOCATION
@@ -120,22 +139,29 @@ fun WeatherDashboardScreen(
             context,
             android.Manifest.permission.ACCESS_FINE_LOCATION
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        
         if (hasCoarse || hasFine) {
             viewModel.detectAndSetCurrentLocation()
         }
 
+        // Notification Prompt Logic
         if (android.os.Build.VERSION.SDK_INT >= 33) {
-            val isGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+            val isNotifGranted = androidx.core.content.ContextCompat.checkSelfPermission(
                 context,
                 "android.permission.POST_NOTIFICATIONS"
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
             
-            val prefs = context.getSharedPreferences("weather_prefs_v3", android.content.Context.MODE_PRIVATE)
-            val hasPrompted = prefs.getBoolean("fcm_has_prompted_notifications", false)
+            val hasPromptedNotif = prefs.getBoolean("fcm_has_prompted_notifications", false)
             
-            if (!isGranted && !hasPrompted) {
+            if (!isNotifGranted && !hasPromptedNotif) {
                 showNotificationExplanationDialog = true
+            } else {
+                // If notif doesn't need prompting, check location
+                checkLocationPrompt(context, prefs) { showLocationExplanationDialog = true }
             }
+        } else {
+            // Lower Android versions don't need notif permission, check location
+            checkLocationPrompt(context, prefs) { showLocationExplanationDialog = true }
         }
     }
 
@@ -227,11 +253,13 @@ fun WeatherDashboardScreen(
                 TextButton(
                     onClick = {
                         showNotificationExplanationDialog = false
-                        context.getSharedPreferences("weather_prefs_v3", android.content.Context.MODE_PRIVATE)
-                            .edit().putBoolean("fcm_has_prompted_notifications", true).apply()
+                        val prefs = context.getSharedPreferences("weather_prefs_v3", android.content.Context.MODE_PRIVATE)
+                        prefs.edit().putBoolean("fcm_has_prompted_notifications", true).apply()
                         if (android.os.Build.VERSION.SDK_INT >= 33) {
                             notificationPermissionLauncher.launch("android.permission.POST_NOTIFICATIONS")
                         }
+                        // After requesting notif, check if we need to show location dialog
+                        checkLocationPrompt(context, prefs) { showLocationExplanationDialog = true }
                     }
                 ) {
                     Text("Enable Alerts", color = Color(0xFF7491FF), fontWeight = FontWeight.SemiBold)
@@ -241,11 +269,80 @@ fun WeatherDashboardScreen(
                 TextButton(
                     onClick = {
                         showNotificationExplanationDialog = false
-                        context.getSharedPreferences("weather_prefs_v3", android.content.Context.MODE_PRIVATE)
-                            .edit().putBoolean("fcm_has_prompted_notifications", true).apply()
+                        val prefs = context.getSharedPreferences("weather_prefs_v3", android.content.Context.MODE_PRIVATE)
+                        prefs.edit().putBoolean("fcm_has_prompted_notifications", true).apply()
+                        // Check if we need to show location dialog even if notif was declined
+                        checkLocationPrompt(context, prefs) { showLocationExplanationDialog = true }
                     }
                 ) {
                     Text("Maybe Later", color = Color(0xFF71717A))
+                }
+            }
+        )
+    }
+
+    if (showLocationExplanationDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showLocationExplanationDialog = false
+                context.getSharedPreferences("weather_prefs_v3", android.content.Context.MODE_PRIVATE)
+                    .edit().putBoolean("has_prompted_location_v4", true).apply()
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.MyLocation,
+                    contentDescription = null,
+                    tint = Color(0xFF7491FF),
+                    modifier = Modifier.size(36.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Hyper-Local Weather",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Text(
+                        text = "Allow location access to get real-time weather updates and severe alerts for your exact position.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFFE4E4E7)
+                    )
+                }
+            },
+            containerColor = Color(0xFF1E2229),
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLocationExplanationDialog = false
+                        context.getSharedPreferences("weather_prefs_v3", android.content.Context.MODE_PRIVATE)
+                            .edit().putBoolean("has_prompted_location_v4", true).apply()
+                        locationPermissionLauncher.launch(
+                            arrayOf(
+                                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                android.Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                    }
+                ) {
+                    Text("Allow Access", color = Color(0xFF7491FF), fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showLocationExplanationDialog = false
+                        context.getSharedPreferences("weather_prefs_v3", android.content.Context.MODE_PRIVATE)
+                            .edit().putBoolean("has_prompted_location_v4", true).apply()
+                    }
+                ) {
+                    Text("Not Now", color = Color(0xFF71717A))
                 }
             }
         )
@@ -450,16 +547,6 @@ fun WeatherDashboardScreen(
                         )
                     }
 
-                    // 3. Mini Interactive Weather Radar teaser (Clicking it expands radar)
-                    item {
-                        MiniRadarTeaserCard(
-                            location = selectedLoc,
-                            onUnfoldClick = { isRadarExpanded = true },
-                            containerColor = themeCardBg,
-                            borderColor = themeBorder
-                        )
-                    }
-
                     // 4. 24-Hour Scrolling Forecast bar
                     item {
                         forecastDetails?.let { details ->
@@ -487,7 +574,7 @@ fun WeatherDashboardScreen(
                         }
                     }
 
-                    // 5. High-precision dynamic weather gauges
+                    // 5. High-precision dynamic weather gauges (Atmospheric Details)
                     item {
                         forecastDetails?.let { details ->
                             WeatherMetricsGrid(
@@ -512,12 +599,23 @@ fun WeatherDashboardScreen(
                         }
                     }
 
+                    // 3. Mini Interactive Weather Radar teaser (Clicking it expands radar)
+                    item {
+                        MiniRadarTeaserCard(
+                            location = selectedLoc,
+                            onUnfoldClick = { isRadarExpanded = true },
+                            containerColor = themeCardBg,
+                            borderColor = themeBorder
+                        )
+                    }
+
                     // 7. Historical Weather Explorer
                     item {
                         forecastDetails?.let {
                             HistoricalWeatherCard(
                                 viewModel = viewModel,
                                 isCelsius = isCelsius,
+                                selectedLanguage = selectedLanguage,
                                 containerColor = themeCardBg,
                                 borderColor = themeBorder
                             )
@@ -529,6 +627,7 @@ fun WeatherDashboardScreen(
                         forecastDetails?.let {
                             WeatherAlertsCard(
                                 viewModel = viewModel,
+                                selectedLanguage = selectedLanguage,
                                 containerColor = themeCardBg,
                                 borderColor = themeBorder
                             )
@@ -1832,7 +1931,11 @@ fun WeeklyForecastContainer(
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 details.dailyList.forEach { forecast ->
-                    DailyForecastRow(forecast = forecast, isCelsius = isCelsius)
+                    DailyForecastRow(
+                        forecast = forecast,
+                        isCelsius = isCelsius,
+                        selectedLanguage = selectedLanguage
+                    )
                 }
             }
         }
@@ -1840,7 +1943,7 @@ fun WeeklyForecastContainer(
 }
 
 @Composable
-fun DailyForecastRow(forecast: DailyForecast, isCelsius: Boolean) {
+fun DailyForecastRow(forecast: DailyForecast, isCelsius: Boolean, selectedLanguage: String) {
     val displayHigh = if (isCelsius) "${forecast.highC}°" else "${(forecast.highC * 9/5 + 32).toInt()}°"
     val displayLow = if (isCelsius) "${forecast.lowC}°" else "${(forecast.lowC * 9/5 + 32).toInt()}°"
 
@@ -1860,7 +1963,7 @@ fun DailyForecastRow(forecast: DailyForecast, isCelsius: Boolean) {
     ) {
         // Weekday Name
         Text(
-            text = forecast.dayString,
+            text = getTranslatedLabel(forecast.dayString, selectedLanguage),
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
             color = Color(0xFFE2E2E6),
             modifier = Modifier.width(90.dp)
@@ -1881,14 +1984,14 @@ fun DailyForecastRow(forecast: DailyForecast, isCelsius: Boolean) {
             Spacer(modifier = Modifier.width(10.dp))
             if (forecast.rainChance > 25) {
                 Text(
-                    text = "${forecast.rainChance}% " + forecast.condition.lowercase(Locale.ROOT),
+                    text = "${forecast.rainChance}% " + getTranslatedLabel(forecast.condition, selectedLanguage).lowercase(Locale.ROOT),
                     fontSize = 11.sp,
                     color = Color(0xFF7491FF),
                     fontWeight = FontWeight.Bold
                 )
             } else {
                 Text(
-                    text = forecast.condition.lowercase(Locale.ROOT),
+                    text = getTranslatedLabel(forecast.condition, selectedLanguage).lowercase(Locale.ROOT),
                     fontSize = 11.sp,
                     color = Color(0xFF8C9199)
                 )
@@ -2151,6 +2254,7 @@ fun Modifier.maxHeight(max: androidx.compose.ui.unit.Dp): Modifier {
 fun HistoricalWeatherCard(
     viewModel: WeatherViewModel,
     isCelsius: Boolean,
+    selectedLanguage: String,
     containerColor: Color = Color(0xFF1F2429),
     borderColor: Color = Color(0xFF2D3135)
 ) {
@@ -2177,12 +2281,12 @@ fun HistoricalWeatherCard(
             ) {
                 Column {
                     Text(
-                        text = "HISTORICAL SECTOR RECORD",
+                        text = getTranslatedLabel("HISTORICAL SECTOR RECORD", selectedLanguage),
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp),
                         color = Color(0xFF7491FF)
                     )
                     Text(
-                        text = "Atmospheric trends for chosen epoch",
+                        text = getTranslatedLabel("Atmospheric trends for chosen epoch", selectedLanguage),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF8C9199)
                     )
@@ -2222,7 +2326,7 @@ fun HistoricalWeatherCard(
                         ),
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text(text = option.second, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(text = getTranslatedLabel(option.second, selectedLanguage), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -2243,18 +2347,18 @@ fun HistoricalWeatherCard(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "HISTORIC AVG", fontSize = 8.sp, color = Color(0xFF8C9199), fontWeight = FontWeight.Bold)
+                        Text(text = getTranslatedLabel("HISTORIC AVG", selectedLanguage), fontSize = 8.sp, color = Color(0xFF8C9199), fontWeight = FontWeight.Bold)
                         val dispAvg = if (isCelsius) "${avgTemp.toInt()}°C" else "${(avgTemp * 9/5 + 32).toInt()}°F"
                         Text(text = dispAvg, fontSize = 14.sp, color = Color(0xFFE2E2E6), fontWeight = FontWeight.Bold)
                     }
                     Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color(0xFF2D3135)).align(Alignment.CenterVertically))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "RAIN CHANCE", fontSize = 8.sp, color = Color(0xFF8C9199), fontWeight = FontWeight.Bold)
+                        Text(text = getTranslatedLabel("RAIN CHANCE", selectedLanguage), fontSize = 8.sp, color = Color(0xFF8C9199), fontWeight = FontWeight.Bold)
                         Text(text = "$avgPrecip%", fontSize = 14.sp, color = Color(0xFFE2E2E6), fontWeight = FontWeight.Bold)
                     }
                     Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color(0xFF2D3135)).align(Alignment.CenterVertically))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "PEAK WIND", fontSize = 8.sp, color = Color(0xFF8C9199), fontWeight = FontWeight.Bold)
+                        Text(text = getTranslatedLabel("PEAK WIND", selectedLanguage), fontSize = 8.sp, color = Color(0xFF8C9199), fontWeight = FontWeight.Bold)
                         Text(text = "${peakWind.toInt()} km/h", fontSize = 14.sp, color = Color(0xFFE2E2E6), fontWeight = FontWeight.Bold)
                     }
                 }
@@ -2263,7 +2367,7 @@ fun HistoricalWeatherCard(
 
                 // Canvas line graph
                 Text(
-                    text = "TEMPERATURE WAVEFORM (°C)",
+                    text = getTranslatedLabel("TEMPERATURE WAVEFORM (°C)", selectedLanguage),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
                     color = Color(0xFF8C9199),
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -2344,7 +2448,7 @@ fun HistoricalWeatherCard(
 
                 // Log details table
                 Text(
-                    text = "HISTORICAL UTILITY LOGS",
+                    text = getTranslatedLabel("HISTORICAL UTILITY LOGS", selectedLanguage),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
                     color = Color(0xFF8C9199),
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -2352,11 +2456,15 @@ fun HistoricalWeatherCard(
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     historyData.take(5).forEach { record ->
-                        HistoricalRowItem(record = record, isCelsius = isCelsius)
+                        HistoricalRowItem(
+                            record = record,
+                            isCelsius = isCelsius,
+                            selectedLanguage = selectedLanguage
+                        )
                     }
                     if (historyData.size > 5) {
                         Text(
-                            text = "+ ${historyData.size - 5} more historical records simulated",
+                            text = "+ ${historyData.size - 5} " + getTranslatedLabel("more historical records simulated", selectedLanguage),
                             fontSize = 10.sp,
                             color = Color(0xFF7491FF),
                             textAlign = TextAlign.Center,
@@ -2372,7 +2480,7 @@ fun HistoricalWeatherCard(
 }
 
 @Composable
-fun HistoricalRowItem(record: HistoricalRecord, isCelsius: Boolean) {
+fun HistoricalRowItem(record: HistoricalRecord, isCelsius: Boolean, selectedLanguage: String) {
     val tempDisp = if (isCelsius) "${record.avgTempC.toInt()}°C" else "${(record.avgTempC * 9/5 + 32).toInt()}°F"
     val highDisp = if (isCelsius) "${record.maxTempC.toInt()}°" else "${(record.maxTempC * 9/5 + 32).toInt()}°"
     val lowDisp = if (isCelsius) "${record.minTempC.toInt()}°" else "${(record.minTempC * 9/5 + 32).toInt()}°"
@@ -2387,7 +2495,7 @@ fun HistoricalRowItem(record: HistoricalRecord, isCelsius: Boolean) {
     ) {
         Column {
             Text(text = record.dateString, fontSize = 12.sp, color = Color(0xFFE2E2E6), fontWeight = FontWeight.Bold)
-            Text(text = record.condition, fontSize = 10.sp, color = Color(0xFF8C9199))
+            Text(text = getTranslatedLabel(record.condition, selectedLanguage), fontSize = 10.sp, color = Color(0xFF8C9199))
         }
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -2418,6 +2526,7 @@ fun HistoricalRowItem(record: HistoricalRecord, isCelsius: Boolean) {
 @Composable
 fun WeatherAlertsCard(
     viewModel: WeatherViewModel,
+    selectedLanguage: String,
     containerColor: Color = Color(0xFF1F2429),
     borderColor: Color = Color(0xFF2D3135)
 ) {
@@ -2453,12 +2562,12 @@ fun WeatherAlertsCard(
             ) {
                 Column {
                     Text(
-                        text = "REGIONAL WEATHER ALERTS",
+                        text = getTranslatedLabel("REGIONAL WEATHER ALERTS", selectedLanguage),
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp),
                         color = Color(0xFF7491FF)
                     )
                     Text(
-                        text = "Configure user notice-points & warnings",
+                        text = getTranslatedLabel("Configure user notice-points & warnings", selectedLanguage),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF8C9199)
                     )
@@ -2495,7 +2604,7 @@ fun WeatherAlertsCard(
                         .padding(16.dp)
                 ) {
                     Text(
-                        text = "CHOOSE SATELLITE FOCUS RULE",
+                        text = getTranslatedLabel("CHOOSE SATELLITE FOCUS RULE", selectedLanguage),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF8C9199),
@@ -2530,7 +2639,7 @@ fun WeatherAlertsCard(
                             ) {
                                 Icon(imageVector = type.third, contentDescription = null, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(text = type.second, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                                Text(text = getTranslatedLabel(type.second, selectedLanguage), fontSize = 8.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -4165,7 +4274,7 @@ fun getTranslatedLabel(label: String, language: String): String {
             else -> "Wind Speed"
         }
         label.contains("UV Index", ignoreCase = true) -> when {
-            isHindi -> "ইউভি সূচক"
+            isHindi -> "यूवी सूचकांक"
             isBengali -> "ইউভি সূচক"
             else -> "UV Index"
         }
@@ -4199,6 +4308,220 @@ fun getTranslatedLabel(label: String, language: String): String {
             isBengali -> "স্থানীয় সতর্কতা কেন্দ্র"
             else -> "Local Alert Center"
         }
+        label.contains("REGIONAL WEATHER ALERTS", ignoreCase = true) -> when {
+            isHindi -> "क्षेत्रीय मौसम अलर्ट"
+            isBengali -> "আঞ্চলিক আবহাওয়া সতর্কতা"
+            else -> "REGIONAL WEATHER ALERTS"
+        }
+        label.contains("Configure user notice-points & warnings", ignoreCase = true) -> when {
+            isHindi -> "उपयोगकर्ता नोटिस-पॉइंट और चेतावनियां कॉन्फ़िগার करें"
+            isBengali -> "ব্যবহারকারী নোটিশ-পয়েন্ট এবং সতর্কতা কনফিগার করুন"
+            else -> "Configure user notice-points & warnings"
+        }
+        label.contains("HISTORICAL UTILITY LOGS", ignoreCase = true) -> when {
+            isHindi -> "ऐतिहासिक उपयोगिता लॉग"
+            isBengali -> "ঐতিহাসিক ইউটিলিটি লগ"
+            else -> "HISTORICAL UTILITY LOGS"
+        }
+        label.contains("HISTORICAL SECTOR RECORD", ignoreCase = true) -> when {
+            isHindi -> "ऐतिहासिक क्षेत्र रिकॉर्ड"
+            isBengali -> "ঐতিহাসিক সেক্টর রেকর্ড"
+            else -> "HISTORICAL SECTOR RECORD"
+        }
+        label.contains("Atmospheric trends for chosen epoch", ignoreCase = true) -> when {
+            isHindi -> "चुने गए युग के लिए वायुमंडलीय रुझान"
+            isBengali -> "নির্বাচিত সময়ের জন্য বায়ুমণ্ডলীয় প্রবণতা"
+            else -> "Atmospheric trends for chosen epoch"
+        }
+        label.contains("Deep atmospheric analytics & trend patterns", ignoreCase = true) -> when {
+            isHindi -> "गहन वायुमंडलीय विश्लेषण और रुझान पैटर्न"
+            isBengali -> "গভীর বায়ুমণ্ডলীয় বিশ্লেষণ এবং প্রবণতা প্যাটার্ন"
+            else -> "Deep atmospheric analytics & trend patterns"
+        }
+        label.contains("more historical records simulated", ignoreCase = true) -> when {
+            isHindi -> "अधिक ऐतिहासिक रिकॉर्ड सिम्युलेटेड"
+            isBengali -> "আরও ঐতিহাসিক রেকর্ড সিমুলেটেড"
+            else -> "more historical records simulated"
+        }
+        label.contains("TEMPERATURE WAVEFORM", ignoreCase = true) -> when {
+            isHindi -> "तापमान तरंग रूप (°C)"
+            isBengali -> "তাপমাত্রা তরঙ্গরূপ (°C)"
+            else -> "TEMPERATURE WAVEFORM (°C)"
+        }
+        label.contains("Extreme Heat", ignoreCase = true) -> when {
+            isHindi -> "अत्यधिक गर्मी"
+            isBengali -> "তীব্র তাপ"
+            else -> "Extreme Heat"
+        }
+        label.contains("Severe Thunderstorm", ignoreCase = true) -> when {
+            isHindi -> "भीषण गरज के साथ तूफान"
+            isBengali -> "প্রবল বজ্রঝড়"
+            else -> "Severe Thunderstorm"
+        }
+        label.contains("HISTORIC AVG", ignoreCase = true) -> when {
+            isHindi -> "ऐतिहासिक औसत"
+            isBengali -> "ঐতিহাসিক গড়"
+            else -> "HISTORIC AVG"
+        }
+        label.contains("PEAK WIND", ignoreCase = true) -> when {
+            isHindi -> "उच्चतम हवा"
+            isBengali -> "সর্বোচ্চ বাতাস"
+            else -> "PEAK WIND"
+        }
+        label.contains("Controls card opacity levels across all screens", ignoreCase = true) -> when {
+            isHindi -> "सभी स्क्रीन पर कार्ड अस्पष्टता स्तरों को नियंत्रित करता है, जिससे तत्वों के पीछे सुंदर एनिमेटेड मौसम पृष्ठभूमि प्रवाहित होती है।"
+            isBengali -> "সমস্ত স্ক্রীন জুড়ে কার্ডের অস্বচ্ছতার স্তরগুলি নিয়ন্ত্রণ করে, উপাদানগুলির পিছনে সুন্দর অ্যানিমেটেড আবহাওয়ার পটভূমিকে প্রবাহিত করতে দেয়।"
+            else -> "Controls card opacity levels across all screens, allowing the beautiful animated weather backgrounds to flow behind elements."
+        }
+        label.contains("Lancher Overlays & Designs", ignoreCase = true) -> when {
+            isHindi -> "लॉन्चर ओवरले और डिज़ाइन"
+            isBengali -> "লঞ্চার ওভারলে এবং ডিজাইন"
+            else -> "Lancher Overlays & Designs"
+        }
+        label.contains("Design custom transparent overlay skins", ignoreCase = true) -> when {
+            isHindi -> "कस्टम पारदर्शी ओवरले स्किन, बॉर्डर ग्लो और ट्विंकल फैक्टर डिज़ाइन करें"
+            isBengali -> "কাস্টম স্বচ্ছ ওভারলে স্কিন, বর্ডার গ্লো এবং টুইঙ্কল ফ্যাক্টর ডিজাইন করুন"
+            else -> "Design custom transparent overlay skins, border glows, and twinkle factors"
+        }
+        label.contains("App Display Language", ignoreCase = true) -> when {
+            isHindi -> "ऐप प्रदर्शन भाषा:"
+            isBengali -> "অ্যাপ ডিসপ্লে ভাষা:"
+            else -> "App Display Language:"
+        }
+        label.contains("Atmospheric Notifications", ignoreCase = true) -> when {
+            isHindi -> "वायुमंडलीय सूचनाएं"
+            isBengali -> "বায়ুমণ্ডলীয় বিজ্ঞপ্তি"
+            else -> "Atmospheric Notifications"
+        }
+        label.contains("Receive severe storms and weather warnings", ignoreCase = true) -> when {
+            isHindi -> "भीषण तूफान और मौसम की चेतावनी प्राप्त करें"
+            isBengali -> "তীব্র ঝড় এবং আবহাওয়ার সতর্কতা পান"
+            else -> "Receive severe storms and weather warnings"
+        }
+        label.contains("Daily Morning Briefing", ignoreCase = true) -> when {
+            isHindi -> "दैनिक सुबह की ब्रीफिंग"
+            isBengali -> "দৈনিক সকালের ব্রিফিং"
+            else -> "Daily Morning Briefing"
+        }
+        label.contains("Get Gemini Smart summaries every single morning", ignoreCase = true) -> when {
+            isHindi -> "हर सुबह जेमिनी स्मार्ट सारांश प्राप्त करें"
+            isBengali -> "প্রতিদিন সকালে জেমিনি স্মার্ট সারাংশ পান"
+            else -> "Get Gemini Smart summaries every single morning"
+        }
+        label.contains("Persistent Status Bar Temp", ignoreCase = true) -> when {
+            isHindi -> "स्थिर स्टेटस बार तापमान"
+            isBengali -> "স্থায়ী স্ট্যাটাস বার তাপমাত্রা"
+            else -> "Persistent Status Bar Temp"
+        }
+        label.contains("Show real-time temperature in notifications", ignoreCase = true) -> when {
+            isHindi -> "सूचनाओं में रीयल-टाइम तापमान दिखाएं"
+            isBengali -> "বিজ্ঞপ্তিতে রিয়েল-টাইম তাপমাত্রা দেখান"
+            else -> "Show real-time temperature in notifications"
+        }
+        label.contains("Background Auto Refresh", ignoreCase = true) -> when {
+            isHindi -> "पृष्ठभूमि स्वतः ताज़ा करें:"
+            isBengali -> "ব্যাকগ্রাউন্ড অটো রিফ্রেশ:"
+            else -> "Background Auto Refresh:"
+        }
+        label.contains("Clear Database & Vector Cache", ignoreCase = true) -> when {
+            isHindi -> "डेटाबेस और वेक्टर कैश साफ़ करें"
+            isBengali -> "ডেটাবেস এবং ভেক্টর ক্যাশে সাফ করুন"
+            else -> "Clear Database & Vector Cache"
+        }
+        label.contains("FAQ Guide", ignoreCase = true) -> when {
+            isHindi -> "एफएक्यू गाइड"
+            isBengali -> "এফএকিউ গাইড"
+            else -> "FAQ Guide"
+        }
+        label.contains("Send Feedback", ignoreCase = true) -> when {
+            isHindi -> "प्रतिक्रिया भेजें"
+            isBengali -> "মতামত পাঠান"
+            else -> "Send Feedback"
+        }
+        label.contains("Developed by Shouvik Maitra", ignoreCase = true) -> when {
+            isHindi -> "शौविक मैत्रा द्वारा विकसित"
+            isBengali -> "শৌভিক মৈত্র দ্বারা বিকশিত"
+            else -> "Developed by Shouvik Maitra"
+        }
+        label.contains("PREMIUM SETTINGS", ignoreCase = true) -> when {
+            isHindi -> "प्रीमियम सेटिंग्स"
+            isBengali -> "প্রিমিয়াম সেটিংস"
+            else -> "PREMIUM SETTINGS"
+        }
+        label.contains("Tailor your atmospheric view and overlays", ignoreCase = true) -> when {
+            isHindi -> "अपने वायुमंडलीय दृश्य और ओवरले को अनुकूलित करें"
+            isBengali -> "আপনার বায়ুমণ্ডলীয় দৃশ্য এবং ওভারলেগুলি কাস্টমাইজ করুন"
+            else -> "Tailor your atmospheric view and overlays"
+        }
+        label.contains("UNIT PREFERENCES", ignoreCase = true) -> when {
+            isHindi -> "इकाई प्राथमिकताएं"
+            isBengali -> "ইউনিট পছন্দ"
+            else -> "UNIT PREFERENCES"
+        }
+        label.contains("DASHBOARD TRANSPARENCY PRESET", ignoreCase = true) -> when {
+            isHindi -> "डैशबोर्ड पारदर्शिता प्रीसेट"
+            isBengali -> "ড্যাশবোর্ড স্বচ্ছতা প্রিসেট"
+            else -> "DASHBOARD TRANSPARENCY PRESET"
+        }
+        label.contains("EXCLUSIVE THEME STYLES", ignoreCase = true) -> when {
+            isHindi -> "विशेष थीम शैलियाँ"
+            isBengali -> "এক্সক্লুসিভ থিম শৈলী"
+            else -> "EXCLUSIVE THEME STYLES"
+        }
+        label.contains("WIDGET OVERLAY STUDIO", ignoreCase = true) -> when {
+            isHindi -> "विजेट ओवरले स्टूडियो"
+            isBengali -> "উইজেট ওভারলে স্টুডিও"
+            else -> "WIDGET OVERLAY STUDIO"
+        }
+        label.contains("INTERNATIONALIZATION", ignoreCase = true) -> when {
+            isHindi -> "अंतर्राष्ट्रीयकरण"
+            isBengali -> "আন্তর্জাতিকীকরণ"
+            else -> "INTERNATIONALIZATION"
+        }
+        label.contains("REALTIME ALERTS & NOTIFICATIONS", ignoreCase = true) -> when {
+            isHindi -> "रीयल-टाइम अलर्ट और सूचनाएं"
+            isBengali -> "রিয়েল-টাইম সতর্কতা এবং বিজ্ঞপ্তি"
+            else -> "REALTIME ALERTS & NOTIFICATIONS"
+        }
+        label.contains("ADVANCED SYNCHRONIZATION", ignoreCase = true) -> when {
+            isHindi -> "उन्नत सिंक्रनाइज़ेशन"
+            isBengali -> "উন্নত সিঙ্ক্রোনাইজেশন"
+            else -> "ADVANCED SYNCHRONIZATION"
+        }
+        label.contains("SUPPORT & ASSISTANCE", ignoreCase = true) -> when {
+            isHindi -> "सहायता और सहायता"
+            isBengali -> "সহায়তা এবং সহযোগিতা"
+            else -> "SUPPORT & ASSISTANCE"
+        }
+        label.contains("7 DAYS", ignoreCase = true) -> when {
+            isHindi -> "7 दिन"
+            isBengali -> "৭ দিন"
+            else -> "7 DAYS"
+        }
+        label.contains("14 DAYS", ignoreCase = true) -> when {
+            isHindi -> "14 दिन"
+            isBengali -> "১৪ দিন"
+            else -> "14 DAYS"
+        }
+        label.contains("30 DAYS", ignoreCase = true) -> when {
+            isHindi -> "30 दिन"
+            isBengali -> "৩০ দিন"
+            else -> "30 DAYS"
+        }
+        label.contains("Monday", ignoreCase = true) -> if (isHindi) "सोमवार" else if (isBengali) "সোমবার" else "Monday"
+        label.contains("Tuesday", ignoreCase = true) -> if (isHindi) "मंगलवार" else if (isBengali) "মঙ্গলবার" else "Tuesday"
+        label.contains("Wednesday", ignoreCase = true) -> if (isHindi) "बुधवार" else if (isBengali) "বুধবার" else "Wednesday"
+        label.contains("Thursday", ignoreCase = true) -> if (isHindi) "गुरुवार" else if (isBengali) "বৃহস্পতিবার" else "Thursday"
+        label.contains("Friday", ignoreCase = true) -> if (isHindi) "शुक्रवार" else if (isBengali) "শুক্রবার" else "Friday"
+        label.contains("Saturday", ignoreCase = true) -> if (isHindi) "शनिवार" else if (isBengali) "শনিবার" else "Saturday"
+        label.contains("Sunday", ignoreCase = true) -> if (isHindi) "रविवार" else if (isBengali) "রবিবার" else "Sunday"
+        label.contains("Today", ignoreCase = true) -> if (isHindi) "आज" else if (isBengali) "আজ" else "Today"
+        label.contains("HEAT", ignoreCase = true) -> if (isHindi) "गर्मी" else if (isBengali) "তাপ" else "HEAT"
+        label.contains("FROST", ignoreCase = true) -> if (isHindi) "पाला" else if (isBengali) "তুষারপাত" else "FROST"
+        label.contains("WIND", ignoreCase = true) -> if (isHindi) "हवा" else if (isBengali) "বাতাস" else "WIND"
+        label.contains("SNOW", ignoreCase = true) -> if (isHindi) "बर्फ" else if (isBengali) "বরফ" else "SNOW"
+        label.contains("STORM", ignoreCase = true) -> if (isHindi) "तूफान" else if (isBengali) "ঝড়" else "STORM"
+        label.contains("CHOOSE SATELLITE FOCUS RULE", ignoreCase = true) -> if (isHindi) "सैटेलाइट फोकस नियम चुनें" else if (isBengali) "স্যাটেলাইট ফোকাস নিয়ম চয়ন করুন" else "CHOOSE SATELLITE FOCUS RULE"
         label.contains("Active Alerts", ignoreCase = true) -> when {
             isHindi -> "सक्रिय अलर्ट"
             isBengali -> "সক্রিয় সতর্কতা"
@@ -4219,6 +4542,21 @@ fun getTranslatedLabel(label: String, language: String): String {
             isBengali -> "এআই আবহাওয়া ব্রিফিং"
             else -> "AI Weather Briefing"
         }
+        label.contains("24-Hour Radar Timeline", ignoreCase = true) -> when {
+            isHindi -> "24-घंटे रडार टाइमरेखा"
+            isBengali -> "২৪-ঘন্টার রাডার টাইমলাইন"
+            else -> "24-Hour Radar Timeline"
+        }
+        label.contains("Partly Cloudy", ignoreCase = true) -> when {
+            isHindi -> "आंशिक रूप से बादल"
+            isBengali -> "আংশিক মেঘলা"
+            else -> "Partly Cloudy"
+        }
+        label.contains("Heavy Overcast", ignoreCase = true) -> when {
+            isHindi -> "भारी बादल"
+            isBengali -> "ভারী মেঘলা"
+            else -> "Heavy Overcast"
+        }
         label.contains("Clear Sunny", ignoreCase = true) || label.contains("Clear", ignoreCase = true) -> when {
             isHindi -> "साफ मौसम"
             isBengali -> "পরিষ্কার আকাশ"
@@ -4229,6 +4567,16 @@ fun getTranslatedLabel(label: String, language: String): String {
             isBengali -> "মেঘলা আকাশ"
             else -> label
         }
+        label.contains("Heavy Rain", ignoreCase = true) -> when {
+            isHindi -> "भारी बारिश"
+            isBengali -> "ভারী বৃষ্টি"
+            else -> "Heavy Rain"
+        }
+        label.contains("Light Rain", ignoreCase = true) -> when {
+            isHindi -> "हल्की बारिश"
+            isBengali -> "হালকা বৃষ্টি"
+            else -> "Light Rain"
+        }
         label.contains("Rain", ignoreCase = true) || label.contains("Shower", ignoreCase = true) -> when {
             isHindi -> "बारिश"
             isBengali -> "বৃষ্টি"
@@ -4238,6 +4586,11 @@ fun getTranslatedLabel(label: String, language: String): String {
             isHindi -> "तूफान"
             isBengali -> "ঝড়"
             else -> label
+        }
+        label.contains("Sunny & Hot", ignoreCase = true) -> when {
+            isHindi -> "धूप और गर्मी"
+            isBengali -> "রৌদ্রোজ্জ্বল ও গরম"
+            else -> "Sunny & Hot"
         }
         else -> label
     }

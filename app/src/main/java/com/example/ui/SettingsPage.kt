@@ -104,7 +104,7 @@ fun SettingsPage(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "PREMIUM SETTINGS",
+                        text = getTranslatedLabel("PREMIUM SETTINGS", selectedLanguage),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
@@ -112,7 +112,7 @@ fun SettingsPage(
                         color = Color.White
                     )
                     Text(
-                        text = "Tailor your atmospheric view and overlays",
+                        text = getTranslatedLabel("Tailor your atmospheric view and overlays", selectedLanguage),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF8C9199)
                     )
@@ -175,7 +175,7 @@ fun SettingsPage(
                 // SECTION 2: Transparency & Glassmorphism Studio
                 SettingsSectionHeader(title = getTranslatedLabel("DASHBOARD TRANSPARENCY PRESET", selectedLanguage), icon = Icons.Filled.BlurOn)
                 Text(
-                    text = "Controls card opacity levels across all screens, allowing the beautiful animated weather backgrounds to flow behind elements.",
+                    text = getTranslatedLabel("Controls card opacity levels across all screens, allowing the beautiful animated weather backgrounds to flow behind elements.", selectedLanguage),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF8C9199),
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -323,7 +323,7 @@ fun SettingsPage(
                 }
 
                 // SECTION 4: Hompage & Overlays Customizer Studio Link
-                SettingsSectionHeader(title = "WIDGET OVERLAY STUDIO", icon = Icons.Filled.AspectRatio)
+                SettingsSectionHeader(title = getTranslatedLabel("WIDGET OVERLAY STUDIO", selectedLanguage), icon = Icons.Filled.AspectRatio)
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -355,13 +355,13 @@ fun SettingsPage(
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Lancher Overlays & Designs",
+                                text = getTranslatedLabel("Lancher Overlays & Designs", selectedLanguage),
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 fontSize = 14.sp
                             )
                             Text(
-                                text = "Design custom transparent overlay skins, border glows, and twinkle factors",
+                                text = getTranslatedLabel("Design custom transparent overlay skins, border glows, and twinkle factors", selectedLanguage),
                                 color = Color(0xFF8C9199),
                                 fontSize = 11.sp
                             )
@@ -392,7 +392,7 @@ fun SettingsPage(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "App Display Language:",
+                            text = getTranslatedLabel("App Display Language", selectedLanguage),
                             fontSize = 14.sp,
                             color = Color.White,
                             fontWeight = FontWeight.Medium,
@@ -443,24 +443,24 @@ fun SettingsPage(
                         .background(Color(0xFF161B1F))
                 ) {
                     NotificationToggleRow(
-                        title = "Atmospheric Notifications",
-                        desc = "Receive severe storms and weather warnings",
+                        title = getTranslatedLabel("Atmospheric Notifications", selectedLanguage),
+                        desc = getTranslatedLabel("Receive severe storms and weather warnings", selectedLanguage),
                         checked = notificationsEnabled,
                         onCheckedChange = { viewModel.setNotificationsEnabled(it) }
                     )
                     Divider(color = Color(0xFF1F2429), thickness = 1.dp)
                     var dailyReport by remember { mutableStateOf(true) }
                     NotificationToggleRow(
-                        title = "Daily Morning Briefing",
-                        desc = "Get Gemini Smart summaries every single morning",
+                        title = getTranslatedLabel("Daily Morning Briefing", selectedLanguage),
+                        desc = getTranslatedLabel("Get Gemini Smart summaries every single morning", selectedLanguage),
                         checked = dailyReport,
                         onCheckedChange = { dailyReport = it }
                     )
                     Divider(color = Color(0xFF1F2429), thickness = 1.dp)
                     var autoRefreshValue by remember { mutableStateOf(true) }
                     NotificationToggleRow(
-                        title = "Persistent Status Bar Temp",
-                        desc = "Show real-time temperature in notifications",
+                        title = getTranslatedLabel("Persistent Status Bar Temp", selectedLanguage),
+                        desc = getTranslatedLabel("Show real-time temperature in notifications", selectedLanguage),
                         checked = autoRefreshValue,
                         onCheckedChange = { autoRefreshValue = it }
                     )
@@ -481,7 +481,7 @@ fun SettingsPage(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Background Auto Refresh:",
+                        text = getTranslatedLabel("Background Auto Refresh", selectedLanguage),
                         fontSize = 14.sp,
                         color = Color.White,
                         modifier = Modifier.weight(1f)
@@ -528,7 +528,7 @@ fun SettingsPage(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Clear Database & Vector Cache",
+                        text = getTranslatedLabel("Clear Database & Vector Cache", selectedLanguage),
                         fontSize = 14.sp,
                         color = Color.White,
                         modifier = Modifier.weight(1f)
@@ -572,7 +572,7 @@ fun SettingsPage(
                     ) {
                         Icon(imageVector = Icons.Filled.HelpOutline, contentDescription = "FAQ", tint = Color(0xFF7491FF))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "FAQ Guide", color = Color.White, fontSize = 12.sp)
+                        Text(text = getTranslatedLabel("FAQ Guide", selectedLanguage), color = Color.White, fontSize = 12.sp)
                     }
 
                     Button(
@@ -583,7 +583,7 @@ fun SettingsPage(
                     ) {
                         Icon(imageVector = Icons.Filled.Feedback, contentDescription = "Feedback", tint = Color(0xFFFF9E00))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "Send Feedback", color = Color.White, fontSize = 12.sp)
+                        Text(text = getTranslatedLabel("Send Feedback", selectedLanguage), color = Color.White, fontSize = 12.sp)
                     }
                 }
 
@@ -628,7 +628,7 @@ fun SettingsPage(
                         )
                     }
                     Text(
-                        text = "shouvikmaitra.com",
+                        text = "© 2026. shouvikmaitra.com",
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif,
                             fontWeight = FontWeight.Normal,
